@@ -41,9 +41,7 @@ Project checklist
 - [ ] Hyperparameter tuning
 - [ ] Packaging (Docker + API) — optional
 
-If you want, I can push this scaffold to a new GitHub repo for you or create a single notebook .ipynb file instead of the .py notebook.
 
----
 
 ## Notes & Charts
 
@@ -72,6 +70,4 @@ If you want, I can push this scaffold to a new GitHub repo for you or create a s
 
 Tip: Add short captions under each plot in the notebook describing the takeaway (1–2 sentences). That makes the README and notebook more friendly for reviewers.
 
-Where to paste this
-- Insert this section into `README.md` (recommended after Quick start or as a new "Notes & Charts" section).  
-- Optionally link to `NOTES.md` for more details: `Notes: [NOTES.md](NOTES.md)`.
+
