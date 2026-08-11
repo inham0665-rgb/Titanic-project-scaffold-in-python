@@ -8,7 +8,7 @@ What this repo contains
 - src/features.py — feature engineering helpers
 - src/model.py — training, evaluation, and model saving functions
 - requirements.txt — Python dependencies
-- run_train.sh — simple shell script to run training
+- run_train.sh — simple shell script to run training (classification)
 - .gitignore, LICENSE (MIT)
 
 Dataset
@@ -23,7 +23,7 @@ Quick start (local)
 2. Install dependencies:
    pip install -r requirements.txt
 3. Ensure data/train.csv and data/test.csv exist.
-4. Run the baseline training & evaluation:
+4. Run the baseline training & evaluation (classification):
    bash run_train.sh
    This trains a baseline model, prints metrics, and writes `models/baseline.pkl`.
 
@@ -41,6 +41,9 @@ Project checklist
 - [ ] Hyperparameter tuning
 - [ ] Packaging (Docker + API) — optional
 
+If you want, I can push this scaffold to a new GitHub repo for you or create a single notebook .ipynb file instead of the .py notebook.
+
+---
 
 ## Notes & Charts
 
@@ -75,200 +78,77 @@ Where to paste this
 
 ---
 
-## Execution examples — classification, regression, and advanced techniques
+## Classification — how to run, how it works, and interpreting feedback
 
-This section contains ready-to-run code snippets and explanations you can copy into scripts or notebooks. They show how to: train the baseline classifier, run cross-validation and hyperparameter tuning, run a regression example (predict `Fare`), compute SHAP explanations, and run a minimal FastAPI inference endpoint.
+### How to run (classification: predict `Survived`)
 
-Prerequisites
-- Python environment with packages from `requirements.txt` installed. Add these for extras:
-
-```bash
-pip install xgboost shap fastapi uvicorn[standard]
-```
-
-A. Classification — baseline (runable)
-
-Command-line (existing train script):
+From the repo root (after you placed `data/train.csv`):
 
 ```bash
-# trains RandomForest baseline and saves models/baseline.pkl
+# Run the existing classification training script
 python src/train.py --train-csv data/train.csv --output-dir models
 ```
 
-Equivalent quick script (copy to scripts/train_baseline.py):
+This script runs a baseline RandomForestClassifier and saves the model to `models/baseline.pkl` (and `models/encoder.pkl` if an encoder is created).
 
-```python
-# scripts/train_baseline.py
-import joblib
-from src.data import load_data, basic_cleaning
-from src.features import extract_features
-from src.model import train_and_evaluate
+### What the classification code does (pipeline)
+1. Data loading: `src/data.py::load_data` reads CSV into a pandas DataFrame.
+2. Basic cleaning: `src/data.py::basic_cleaning` fills missing Age with median and Embarked with mode, drops high-missing/noisy columns (Cabin, Ticket).
+3. Feature extraction: `src/features.py::extract_features` selects relevant columns (Pclass, Sex, Age, SibSp, Parch, Fare, Embarked), fills missing Fare, and one-hot encodes Sex/Embarked.
+4. Train/test split: `src/model.py::train_and_evaluate` splits data (stratified) and trains RandomForestClassifier.
+5. Evaluation: prints validation accuracy, ROC AUC (if probabilities available), classification report, and confusion matrix.
+6. Artifacts: model and encoder are saved in `models/`.
 
-if __name__ == '__main__':
-    df = load_data('data/train.csv')
-    df = basic_cleaning(df)
-    X, y, encoder = extract_features(df)
-    model, acc, roc = train_and_evaluate(X, y, output_dir='models')
-    # encoder saved by train script if present
-```
+### What feedback to look for (classification metrics)
+- Accuracy: overall fraction of correct predictions. Useful as a baseline but can be misleading if classes are imbalanced.
+- ROC AUC: measures ranking quality of predicted probabilities; values closer to 1.0 are better. Good when you care about ranking or imbalanced classes.
+- Precision / Recall / F1: per-class measures. For `Survived=1` (positive class):
+  - Precision: fraction of predicted survivors that actually survived (reducing false positives).
+  - Recall: fraction of true survivors correctly predicted (reducing false negatives).
+  - F1: harmonic mean of precision & recall; useful when seeking balance.
+- Confusion matrix: shows true vs predicted counts to diagnose common error types.
 
-Explanation
-- train_and_evaluate performs a stratified holdout split (80/20) and trains a RandomForestClassifier. It prints accuracy, ROC-AUC, classification report, confusion matrix, and saves `models/baseline.pkl`.
-
-B. Cross-validation & hyperparameter tuning (classification)
-
-Example using RandomizedSearchCV (faster than grid search):
-
-```python
-# scripts/hyperparam_tune.py
-import numpy as np
-from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import make_scorer, f1_score
-from src.data import load_data, basic_cleaning
-from src.features import extract_features
-
-df = load_data('data/train.csv')
-df = basic_cleaning(df)
-X, y, _ = extract_features(df)
-
-param_dist = {
-    'n_estimators': [50, 100, 200],
-    'max_depth': [None, 5, 10, 20],
-    'min_samples_split': [2, 5, 10]
-}
-cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-clf = RandomForestClassifier(random_state=42)
-search = RandomizedSearchCV(clf, param_distributions=param_dist, n_iter=12, scoring='roc_auc', cv=cv, n_jobs=-1, random_state=42)
-search.fit(X, y)
-print('Best params:', search.best_params_)
-print('Best score:', search.best_score_)
-```
-
-Explanation
-- Use stratified k-fold to avoid class imbalance issues. Score by ROC-AUC for ranking models when class imbalance exists. Save `search.best_estimator_` for deployment.
-
-C. Regression example — predict Fare (toy problem)
-
-Sometimes you want to practice regression on the same dataset (predict `Fare` given passenger features). This is a simple example using RandomForestRegressor.
-
-```python
-# scripts/regress_fare.py
-import joblib
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
-from src.data import load_data, basic_cleaning
-from src.features import extract_features
-
-# load & prepare
-df = load_data('data/train.csv')
-df = basic_cleaning(df)
-# target = Fare; drop rows where Fare missing
-reg_df = df.dropna(subset=['Fare']).copy()
-y = reg_df['Fare']
-X, _y, encoder = extract_features(reg_df)
-
-# If extract_features drops Fare, reconstruct feature matrix to include predictors only (ensure Fare not in X)
-# Split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-model = RandomForestRegressor(n_estimators=100, random_state=42)
-model.fit(X_train, y_train)
-preds = model.predict(X_test)
-rmse = mean_squared_error(y_test, preds, squared=False)
-r2 = r2_score(y_test, preds)
-print(f'Fare regression RMSE: {rmse:.3f}, R2: {r2:.3f}')
-# Save model
-joblib.dump(model, 'models/fare_regressor.pkl')
-```
-
-Explanation
-- This is a toy regression task. It helps practice preprocessing, dealing with skewed targets (consider log-transform of Fare), and regression metrics (RMSE, R2).
-
-D. Model explainability with SHAP (classification)
-
-Quick snippet to compute SHAP values for the RandomForest baseline:
-
-```python
-# scripts/explain_shap.py
-import joblib
-import shap
-import pandas as pd
-from src.data import load_data, basic_cleaning
-from src.features import extract_features
-
-model = joblib.load('models/baseline.pkl')
-df = load_data('data/train.csv')
-df = basic_cleaning(df)
-X, y, encoder = extract_features(df)
-# Use a sample to speed up SHAP
-X_sample = X.sample(200, random_state=42)
-explainer = shap.TreeExplainer(model)
-shap_values = explainer.shap_values(X_sample)
-# Summary plot (class 1)
-shap.summary_plot(shap_values[1], X_sample)
-```
-
-Explanation
-- SHAP provides local and global explanations. For tree models use TreeExplainer; for NN use DeepExplainer or KernelExplainer as appropriate.
-
-E. Minimal FastAPI inference example
-
-Create `app.py` with the following content:
-
-```python
-# app.py
-from fastapi import FastAPI
-import joblib
-import pandas as pd
-
-app = FastAPI()
-model = joblib.load('models/baseline.pkl')
-encoder = None
-try:
-    encoder = joblib.load('models/encoder.pkl')
-except Exception:
-    pass
-
-@app.post('/predict')
-def predict(payload: dict):
-    # payload: dict of feature values matching train features
-    df = pd.DataFrame([payload])
-    # minimal preprocessing: align columns and encode as in training
-    # if encoder is present, apply encoder to categorical columns
-    # This example assumes the payload matches the model's expected columns
-    preds = model.predict(df)
-    probs = model.predict_proba(df)[:,1] if hasattr(model, 'predict_proba') else None
-    return {'prediction': int(preds[0]), 'probability': float(probs[0]) if probs is not None else None}
-
-# Run with:
-# uvicorn app:app --reload --port 8000
-```
-
-Explanation
-- For production, add input validation (pydantic models), robust preprocessing identical to training pipeline, and authentication.
-
-F. Running the notebook
-
-- The notebook-like script is at `notebooks/01_titanic_baseline.py`. You can:
-  - Open it in VS Code and run cells with the Python extension, or
-  - Convert to `.ipynb` with jupytext, or
-  - Run it as a script: `python notebooks/01_titanic_baseline.py` (plots will open in supported environments).
-
-G. Reproducibility & experiments
-
-- Set `random_state=42` where applicable. Save models and encoders with `joblib.dump()` in `models/`.
-- For experiment tracking use MLflow (quick example):
-
-```bash
-pip install mlflow
-mlflow run . -P alpha=0.5
-```
-
-- For data versioning use DVC if you want to track large datasets outside Git.
+Interpretation tips
+- If recall for Survived is low, the model misses survivors (false negatives); consider adjusting class weights, threshold, or using a model that better captures minority class.
+- If precision is low, many predicted survivors did not survive (false positives); consider precision-oriented tuning.
+- Use feature importance or SHAP values to understand which features drive predictions (Sex, Pclass often dominate in Titanic).
 
 ---
 
-If you want, I will:
-- Commit this README addition to `main` now (commit message: "Add execution examples & code snippets to README").
-- Or instead create separate script files under `scripts/` for each example and push them to the repo. The latter makes the examples immediately runnable; tell me which option you prefer.
+## Regression — how to run, how it works, and interpreting feedback
+
+This repository's main task is classification (Survived). We include a simple regression example that predicts `Fare` using the other passenger features. This is useful as an exercise in regression modeling and evaluation.
+
+### How to run (regression: predict `Fare`)
+
+From the repo root (after you placed `data/train.csv`):
+
+```bash
+python src/train_regression.py --train-csv data/train.csv --output-dir models
+```
+
+This will train a RandomForestRegressor to predict Fare and save the model to `models/regression_baseline.pkl`.
+
+### What the regression code does (pipeline)
+1. Data loading & cleaning: reuses `src/data.py` cleaning to fill Age/Embarked and drop noisy columns.
+2. Target selection: sets `y = Fare` and removes Fare from the feature set before training.
+3. Feature building: encodes categorical fields (Sex, Embarked) and keeps numeric fields (Pclass, Age, SibSp, Parch).
+4. Train/test split: simple random split with a fixed random_state for reproducibility.
+5. Model: RandomForestRegressor is trained on the training set.
+6. Evaluation: prints RMSE and MAE on the validation set and saves the model artifact.
+
+### What feedback to look for (regression metrics)
+- RMSE (Root Mean Squared Error): penalizes large errors more heavily; same units as target (fare). Lower is better.
+- MAE (Mean Absolute Error): average absolute error; more robust to outliers than RMSE.
+
+Interpretation tips
+- Compare RMSE/MAE to the typical Fare scale in your data (e.g., median Fare). A small RMSE relative to median Fare indicates reasonable predictions.
+- Examine residuals (prediction - true) to find patterns or heteroscedasticity (errors that grow with Fare). Consider log-transforming Fare if distribution is skewed.
+- Feature importance: identify which features contribute most to Fare prediction; high importance for Pclass / Title may indicate fare is strongly tied to class and social status.
+
+---
+
+If you'd like, I can also:
+- Add a CLI flag to `src/train.py` to switch between classification and regression modes instead of a separate script.
+- Add plotting code in the notebook to display residuals, predicted vs actual, and the regression feature importances.
+- Add unit tests and a small GitHub Actions workflow to run a smoke test on commit.
