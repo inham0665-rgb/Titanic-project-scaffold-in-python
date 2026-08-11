@@ -172,3 +172,149 @@ if __name__ == '__main__':
     args = parser.parse_args()
     main(args.train_csv, args.output_dir)
 
+# Titanic ML Project Scaffold
+
+Project scaffold to learn end-to-end supervised ML using the Kaggle Titanic
+dataset. The goal is a clean, reproducible pipeline you can run on a laptop:
+data → EDA → features → baseline models (classification & regression) →
+evaluation → simple artifacts.
+
+This repo is beginner-friendly and structured so you can iterate quickly and
+demonstrate results in a portfolio.
+
+## Contents / What's included
+- `notebooks/01_titanic_baseline.py` — notebook-style script for EDA, plots, and interactive work
+- `src/`
+  - `data.py` — data loading & basic cleaning helpers
+  - `features.py` — basic feature extraction and encoding (used by classification)
+  - `model.py` — classification training & evaluation utilities
+  - `train.py` — CLI entrypoint for classification (predict `Survived`)
+  - `train_regression.py` — CLI entrypoint for regression (predict `Fare`)
+- `requirements.txt` — Python dependencies
+- `run_train.sh` — convenience script to run classification training
+- `NOTES.md` — project notes, tips, and links
+- `LICENSE` — MIT license
+- `.gitignore` — ignores venv, datasets, models, notebook checkpoints
+
+## Quick start (local)
+
+```bash
+# Clone
+git clone https://github.com/<your-username>/<your-repo>.git
+cd <your-repo>
+
+# Setup virtual environment
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Download data
+Download `train.csv` and `test.csv` from Kaggle:
+https://www.kaggle.com/c/titanic/data
+Place them into the `data/` folder (create it if it doesn't exist).
+
+### Run baseline classification (predict `Survived`)
+```bash
+bash run_train.sh
+# or
+python src/train.py --train-csv data/train.csv --output-dir models
+```
+
+### Run baseline regression (predict `Fare`)
+```bash
+python src/train_regression.py --train-csv data/train.csv --output-dir models
+```
+
+After training, models are saved into `models/`:
+- Classification: `models/baseline.pkl`
+- Regression: `models/regression_baseline.pkl`
+
+### Run the EDA notebook / chart generator
+```bash
+python notebooks/01_titanic_baseline.py
+```
+This generates all charts listed below into `outputs/` as PNGs.
+
+## Project overview (step-by-step)
+
+1. **Data loading** — `src/data.py::load_data` reads CSV into a DataFrame;
+   `basic_cleaning` fills `Age` with the median, `Embarked` with the mode, and
+   drops `Cabin`/`Ticket`.
+2. **EDA** — `notebooks/01_titanic_baseline.py` plots survival by `Pclass`,
+   `Sex`, `Embarked`; `Age`/`Fare` distributions; family-size effects;
+   correlation heatmap; missing-value summary.
+3. **Feature engineering** — `src/features.py` keeps
+   `Pclass, Sex, Age, SibSp, Parch, Fare, Embarked`, fills missing `Fare` with
+   the median, and one-hot encodes `Sex`/`Embarked`. Suggested improvements:
+   extract `Title` from `Name` and impute `Age` by title group, add
+   `FamilySize`/`IsAlone`, bin or log-transform skewed features.
+4. **Modeling & evaluation**
+   - Classification: `src/train.py` trains a `RandomForestClassifier` on
+     `Survived` with a stratified train/validation split; prints accuracy,
+     ROC AUC, classification report, confusion matrix.
+   - Regression: `src/train_regression.py` trains a `RandomForestRegressor`
+     to predict `Fare`; prints RMSE, MAE.
+   - Artifacts (models, encoders) are saved to `models/`.
+
+## Interpreting results
+**Classification metrics**
+- Accuracy: overall correctness, can be misleading with imbalance.
+- Precision/Recall/F1: inspect for `Survived=1`; tune threshold or
+  `class_weight` if needed.
+- ROC AUC: ranking quality of predicted probabilities.
+- Confusion matrix: analyze FP/FN to guide fixes.
+
+**Regression metrics**
+- RMSE: penalizes large errors; same units as `Fare`.
+- MAE: average absolute error, robust to outliers.
+- Compare errors to median `Fare` to judge practical significance; plot
+  residuals and predicted vs actual.
+
+## Charts included
+1. Survival rate by `Pclass` (bar)
+2. Survival rate by `Sex` (bar)
+3. Age distribution by survival (KDE)
+4. Fare distribution by survival (box)
+5. Survival by `Embarked` (bar)
+6. `FamilySize` vs survival (line)
+7. `Title` (from `Name`) vs survival (bar)
+8. Age vs Fare colored by survival (scatter)
+9. Correlation heatmap (numeric features)
+10. Feature importance (RandomForest)
+11. Confusion matrix + ROC curve
+
+Sample outputs from a demo run are in `outputs/`.
+
+## Experiments & reproducibility
+- Random state fixed (42) in train/test splits and model constructors.
+- Artifacts saved in `models/`.
+- For experiment tracking, consider MLflow or DVC (see `NOTES.md`).
+- `data/` is kept out of version control (`.gitignore`); download
+  instructions are documented above instead.
+
+## Next improvements (good issues for contributors)
+- Implement `Title` extraction and `Age` imputation by `Title`.
+- Add `FamilySize` and `IsAlone` features to the baseline classifier.
+- Replace single holdout with stratified k-fold CV and log fold metrics.
+- Try alternative models: `LogisticRegression`, `XGBoost`, `LightGBM`.
+- Add a SHAP explainability notebook and plots.
+- Add a FastAPI inference service + Dockerfile for deployment.
+- Add a GitHub Actions workflow to run linting and a smoke training job.
+
+## Tests & CI (suggested)
+- Add small unit tests for data loaders and feature functions (`pytest`).
+- Add a GitHub Actions workflow: lint (`ruff`/`flake8`) + a smoke training
+  job (train on the first N rows, assert metrics exist and the model file is
+  created).
+
+## Contributing
+Fork the repo, create a feature branch, open a PR with a clear description
+and tests where applicable. Use the Issues page to propose changes or
+request features. Keep changes small and focused; update `NOTES.md` and this
+README when adding new scripts or functionality.
+
+## License
+MIT — see `LICENSE`.
