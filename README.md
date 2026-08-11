@@ -197,6 +197,9 @@ demonstrate results in a portfolio.
 - `LICENSE` — MIT license
 - `.gitignore` — ignores venv, datasets, models, notebook checkpoints
 
+PIPELINE OVERVIEW:
+<img width="694" height="238" alt="Screenshot 2026-08-11 011729" src="https://github.com/user-attachments/assets/b4e6bd4d-b8ff-4f08-a680-30362f0e7885" />
+
 ## Quick start (local)
 
 ```bash
@@ -232,6 +235,8 @@ python src/train_regression.py --train-csv data/train.csv --output-dir models
 After training, models are saved into `models/`:
 - Classification: `models/baseline.pkl`
 - Regression: `models/regression_baseline.pkl`
+- <img width="689" height="148" alt="Screenshot 2026-08-11 011930" src="https://github.com/user-attachments/assets/541add9b-3c9d-4e08-8bd7-b5e0cd6ed9f7" />
+
 
 ### Run the EDA notebook / chart generator
 ```bash
@@ -266,13 +271,19 @@ This generates all charts listed below into `outputs/` as PNGs.
 - Precision/Recall/F1: inspect for `Survived=1`; tune threshold or
   `class_weight` if needed.
 - ROC AUC: ranking quality of predicted probabilities.
-- Confusion matrix: analyze FP/FN to guide fixes.
+- Confusion matrix: analyze FP/FN to guide fixes
+<img width="681" height="193" alt="Screenshot 2026-08-11 012121" src="https://github.com/user-attachments/assets/ffb13e36-5ff1-4260-afeb-c2a91c6c136f" />
+
 
 **Regression metrics**
 - RMSE: penalizes large errors; same units as `Fare`.
 - MAE: average absolute error, robust to outliers.
 - Compare errors to median `Fare` to judge practical significance; plot
   residuals and predicted vs actual.
+  
+ : DATA CLEANING:
+ <img width="693" height="231" alt="Screenshot 2026-08-11 012308" src="https://github.com/user-attachments/assets/21ae28db-9633-49ec-a844-394ab867aa1d" />
+
 
 ## Charts included
 1. Survival rate by `Pclass` (bar)
@@ -316,6 +327,9 @@ Fork the repo, create a feature branch, open a PR with a clear description
 and tests where applicable. Use the Issues page to propose changes or
 request features. Keep changes small and focused; update `NOTES.md` and this
 README when adding new scripts or functionality.
+
+FUTURE ENGENEERING:
+<img width="988" height="168" alt="image" src="https://github.com/user-attachments/assets/eb375474-f1f5-46ae-a7be-5459ab99e45c" />
 
 ## License
 MIT — see `LICENSE`.
