@@ -1,7 +1,7 @@
 
 
 
-## Notes & Charts
+## Notes & Charts :Execution 1:perform execution like that:
 
 - Purpose: Predict passenger survival on the Titanic using a clear, reproducible beginner pipeline (data → features → baseline model → evaluation).  
 - Baseline model: RandomForest with minimal preprocessing (median age/fare imputation, one‑hot for Sex/Embarked).  
@@ -171,8 +171,9 @@ if __name__ == '__main__':
     parser.add_argument('--output-dir', default='models')
     args = parser.parse_args()
     main(args.train_csv, args.output_dir)
+OR
 
-# Titanic ML Project Scaffold
+# Titanic ML Project Scaffold :execution step 2:
 
 Project scaffold to learn end-to-end supervised ML using the Kaggle Titanic
 dataset. The goal is a clean, reproducible pipeline you can run on a laptop:
